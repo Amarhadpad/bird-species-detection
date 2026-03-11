@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bird Species Detection AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+body{
+font-family:'Poppins',sans-serif;
+background:linear-gradient(135deg,#0f2027,#1a3c34,#2e7d32);
+min-height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+color:white;
+}
+
+.main-container{
+width:95%;
+max-width:1100px;
+padding:40px;
+border-radius:25px;
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(20px);
+border:1px solid rgba(255,255,255,0.1);
+box-shadow:0 20px 50px rgba(0,0,0,0.6);
+}
+
+header{
+text-align:center;
+margin-bottom:30px;
+}
+
+header h1{
+font-size:36px;
+background:linear-gradient(90deg,#a5d6a7,#66bb6a);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.subtitle{
+opacity:.8;
+}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:30px;
+}
+
+.card{
+background:rgba(255,255,255,0.06);
+border-radius:20px;
+padding:25px;
+box-shadow:0 10px 30px rgba(0,0,0,.4);
+border:1px solid rgba(255,255,255,.1);
+}
+
+.buttons{
+margin-top:20px;
+}
+
+button{
+padding:12px 26px;
+border:none;
+border-radius:30px;
+margin-right:10px;
+font-weight:600;
+cursor:pointer;
+background:linear-gradient(90deg,#43a047,#66bb6a);
+color:white;
+}
+
+#status{
+margin-top:15px;
+color:#c8e6c9;
+}
+
+.result-box{
+margin-top:15px;
+font-size:20px;
+font-weight:600;
+color:#a5d6a7;
+}
+
+.progress{
+width:100%;
+height:25px;
+background:rgba(255,255,255,.1);
+border-radius:50px;
+margin-top:15px;
+overflow:hidden;
+}
+
+.progress-fill{
+height:100%;
+width:0%;
+background:linear-gradient(90deg,#a5d6a7,#66bb6a);
+transition:width 1s;
+}
+
+canvas{
+width:100%;
+margin-top:20px;
+border-radius:15px;
+background:rgba(0,0,0,.4);
+}
+
+.bird-img{
+width:100%;
+border-radius:15px;
+margin-top:20px;
+display:none;
+}
+
+audio{
+width:100%;
+margin-top:15px;
+display:none;
+}
+
+.loader{
+border:5px solid rgba(255,255,255,.2);
+border-top:5px solid #66bb6a;
+border-radius:50%;
+width:40px;
+height:40px;
+animation:spin 1s linear infinite;
+margin:20px auto;
+display:none;
+}
+
+@keyframes spin{
+0%{transform:rotate(0)}
+100%{transform:rotate(360deg)}
+}
+
+@media(max-width:900px){
+.grid{grid-template-columns:1fr;}
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="main-container">
+
+<header>
+<h1>🐦 Bird Species Detection</h1>
+<p class="subtitle">AI Powered Bio-Acoustic Recognition System</p>
+</header>
+
+<div class="grid">
+
+<!-- LEFT PANEL -->
+
+<div class="card">
+
+<h3>Audio Input</h3>
+
+<div class="buttons">
+
+<button onclick="startRecording()">🎤 Record</button>
+
+<input type="file" id="fileInput" accept=".wav,.mp3,.flac,.ogg" hidden>
+
+<button onclick="document.getElementById('fileInput').click()">📂 Upload</button>
+
+</div>
+
+<div id="status">Ready to analyze bird sound...</div>
+
+<div class="loader" id="loader"></div>
+
+<canvas id="waveCanvas" width="500" height="200"></canvas>
+
+</div>
+
+<!-- RIGHT PANEL -->
+
+<div class="card">
+
+<h3>Detection Result</h3>
+
+<div class="result-box" id="result">
+Prediction will appear here
+</div>
+
+<div class="progress">
+<div class="progress-fill" id="confidenceFill"></div>
+</div>
+
+<img id="birdImage" class="bird-img">
+
+<audio id="detectedAudio" controls></audio>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const UNSPLASH_KEY = "YOUR_UNSPLASH_ACCESS_KEY";
+
+/* AI PROCESS TEXT */
+
+let aiInterval;
+
+function startAIProcessing(){
+
+const steps=[
+"🎧 Cleaning audio signal...",
+"🔬 Extracting acoustic features...",
+"🧠 Running AI model...",
+"📊 Matching bird patterns...",
+"🐦 Identifying species..."
+];
+
+let i=0;
+
+aiInterval=setInterval(()=>{
+document.getElementById("status").innerText=steps[i];
+i=(i+1)%steps.length;
+},1000);
+
+}
+
+function stopAIProcessing(){
+clearInterval(aiInterval);
+}
+
+/* RECORD AUDIO */
+
+let mediaRecorder;
+let audioChunks=[];
+
+async function startRecording(){
+
+startAIProcessing();
+
+document.getElementById("loader").style.display="block";
+
+const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+
+mediaRecorder=new MediaRecorder(stream);
+
+audioChunks=[];
+
+mediaRecorder.ondataavailable=e=>{
+audioChunks.push(e.data);
+};
+
+mediaRecorder.onstop=()=>{
+
+const blob=new Blob(audioChunks,{type:'audio/wav'});
+
+sendToBackend(blob);
+
+};
+
+mediaRecorder.start();
+
+setTimeout(()=>{
+mediaRecorder.stop();
+},5000);
+
+}
+
+/* FILE UPLOAD */
+
+document.getElementById("fileInput").addEventListener("change",function(){
+
+const file=this.files[0];
+
+if(file){
+startAIProcessing();
+sendToBackend(file);
+}
+
+});
+
+/* SEND AUDIO TO BACKEND */
+
+async function sendToBackend(file){
+
+let formData=new FormData();
+
+formData.append("file",file);
+
+try{
+
+const response=await fetch("/predict",{
+method:"POST",
+body:formData
+});
+
+const data=await response.json();
+
+stopAIProcessing();
+
+document.getElementById("loader").style.display="none";
+
+document.getElementById("status").innerText="Analysis Complete ✅";
+
+/* RESULT */
+
+document.getElementById("result").innerText=
+"🐦 "+data.prediction+" | Confidence: "+data.confidence+"%";
+
+document.getElementById("confidenceFill").style.width=
+data.confidence+"%";
+
+/* UNSPLASH IMAGE */
+const birdName = data.prediction;
+
+fetch(`https://api.inaturalist.org/v1/taxa?q=${birdName}`)
+.then(res => res.json())
+.then(result => {
+
+const birdImg = document.getElementById("birdImage");
+
+if(result.results.length > 0){
+
+birdImg.src = result.results[0].default_photo.medium_url;
+
+birdImg.style.display = "block";
+
+}
+
+});
+/* PLAY AUDIO */
+
+const audioPlayer=document.getElementById("detectedAudio");
+
+audioPlayer.src=URL.createObjectURL(file);
+
+audioPlayer.style.display="block";
+
+audioPlayer.play();
+
+}
+catch(error){
+
+stopAIProcessing();
+
+document.getElementById("loader").style.display="none";
+
+document.getElementById("status").innerText="Server Error ❌";
+
+console.error(error);
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
