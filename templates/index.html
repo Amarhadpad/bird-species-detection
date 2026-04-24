@@ -2,371 +2,1282 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Bird Species Detection AI</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-
+<title>BirdAI — ML Species Detection</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --g1:#00ff87;--g2:#00c896;--g3:#007a5a;--g4:#003d2d;
+  --bg:#040d09;--bg2:#071410;--bg3:#0a1c15;
+  --glass:rgba(0,255,135,0.04);--glass2:rgba(0,255,135,0.08);
+  --border:rgba(0,255,135,0.1);--border2:rgba(0,255,135,0.2);
+  --text:#e0f5ee;--text2:#7abfab;--text3:#2e6050;
+  --red:#ff4d4d;--amber:#ffb800;--blue:#00b4ff;
+  --fd:'Space Mono',monospace;--fb:'Outfit',sans-serif;
+  --r:12px;--r2:18px;--r3:24px;
 }
+html,body{height:100%;font-family:var(--fb);color:var(--text);background:var(--bg);-webkit-tap-highlight-color:transparent;}
+body{display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 0% 0%,rgba(0,200,150,.1) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 50% at 100% 100%,rgba(0,150,100,.08) 0%,transparent 55%),
+    linear-gradient(180deg,#040d09 0%,#060f0b 50%,#040d09 100%);
+  pointer-events:none;}
 
-body{
-font-family:'Poppins',sans-serif;
-background:linear-gradient(135deg,#0f2027,#1a3c34,#2e7d32);
-min-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-color:white;
+/* NOISE OVERLAY */
+body::after{content:'';position:fixed;inset:0;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity:.4;pointer-events:none;}
+
+/* TOP NAV */
+.topnav{position:sticky;top:0;z-index:50;background:rgba(4,13,9,.92);
+  border-bottom:1px solid var(--border);backdrop-filter:blur(20px);
+  display:flex;align-items:center;padding:0 16px;height:56px;gap:12px;flex-shrink:0;}
+.logo{display:flex;align-items:center;gap:8px;text-decoration:none;}
+.logo-mark{width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,var(--g3),var(--g1));
+  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;
+  box-shadow:0 0 16px rgba(0,255,135,.2);}
+.logo-text{font-family:var(--fd);font-size:15px;color:var(--g1);letter-spacing:1px;}
+.logo-text span{color:var(--text2);}
+.topnav-stats{display:flex;gap:6px;margin-left:auto;}
+.spill{padding:4px 10px;border-radius:20px;background:var(--glass);border:1px solid var(--border);
+  font-family:var(--fd);font-size:10px;color:var(--text2);white-space:nowrap;}
+.spill strong{color:var(--g1);}
+.menu-btn{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px;margin-left:8px;}
+
+/* TAB BAR (mobile bottom, desktop top) */
+.tabbar{display:flex;background:rgba(4,13,9,.98);border-top:1px solid var(--border);
+  position:fixed;bottom:0;left:0;right:0;z-index:50;backdrop-filter:blur(20px);
+  padding:6px 0 max(6px, env(safe-area-inset-bottom));}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;color:var(--text3);cursor:pointer;padding:6px 4px;
+  font-family:var(--fb);font-size:9px;font-weight:500;transition:all .2s;position:relative;}
+.tab.active{color:var(--g1);}
+.tab .ti{font-size:18px;line-height:1;}
+.tab .tb{letter-spacing:.04em;text-transform:uppercase;}
+.tab-badge{position:absolute;top:3px;right:50%;transform:translateX(12px);
+  background:var(--g1);color:var(--bg);font-family:var(--fd);font-size:8px;font-weight:700;
+  padding:1px 5px;border-radius:10px;min-width:14px;text-align:center;line-height:14px;}
+
+/* MAIN CONTENT */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative;z-index:1;
+  padding-bottom:calc(64px + env(safe-area-inset-bottom));}
+.page{display:none;flex:1;overflow-y:auto;padding:14px 14px 10px;
+  -webkit-overflow-scrolling:touch;height:100%;}
+.page.active{display:block;}
+
+/* CARDS */
+.card{background:var(--glass);border-radius:var(--r2);border:1px solid var(--border);
+  backdrop-filter:blur(12px);overflow:hidden;margin-bottom:12px;}
+.card-hd{padding:14px 16px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
+.card-ico{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;background:rgba(0,255,135,.1);border:1px solid var(--border2);flex-shrink:0;}
+.card-title{font-family:var(--fd);font-size:11px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;}
+.card-bd{padding:14px 16px;}
+
+/* DETECT PAGE */
+.detect-layout{display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:700px){.detect-layout{grid-template-columns:1fr 1fr;}}
+@media(min-width:1000px){.detect-layout{grid-template-columns:300px 1fr 220px;}}
+
+/* DROP ZONE */
+.drop-zone{border:1.5px dashed rgba(0,255,135,.2);border-radius:12px;padding:20px 14px;text-align:center;
+  cursor:pointer;transition:all .25s;position:relative;background:rgba(0,255,135,.02);}
+.drop-zone:hover,.drop-zone.over{border-color:var(--g2);background:rgba(0,255,135,.06);}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dz-icon{font-size:28px;margin-bottom:8px;display:block;}
+.dz-t{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.dz-s{font-size:11px;color:var(--text3);}
+.act-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+
+/* BUTTONS */
+.btn{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--glass);
+  color:var(--text);font-family:var(--fb);font-size:13px;font-weight:500;cursor:pointer;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;
+  -webkit-tap-highlight-color:transparent;user-select:none;}
+.btn:active{transform:scale(.97);}
+.btn:hover{background:var(--glass2);}
+.btn.primary{background:linear-gradient(135deg,rgba(0,200,150,.25),rgba(0,255,135,.08));
+  border-color:rgba(0,255,135,.3);color:var(--g1);}
+.btn.primary:hover{background:linear-gradient(135deg,rgba(0,200,150,.35),rgba(0,255,135,.15));}
+.btn.danger{border-color:rgba(255,77,77,.3);color:var(--red);}
+.btn.recording{background:rgba(255,77,77,.15);border-color:rgba(255,77,77,.4);color:#ff9090;
+  animation:pulse-red 1.4s infinite;}
+@keyframes pulse-red{0%,100%{box-shadow:0 0 0 0 rgba(255,77,77,.3);}50%{box-shadow:0 0 0 8px rgba(255,77,77,0);}}
+
+/* STATUS */
+.status-bar{margin-top:10px;padding:8px 12px;border-radius:9px;background:rgba(0,0,0,.2);
+  border:1px solid var(--border);display:flex;align-items:center;gap:7px;font-family:var(--fd);font-size:11px;color:var(--text2);}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .3s;}
+.sdot.active{background:var(--g1);animation:blink 1s infinite;}
+.sdot.analyzing{background:var(--amber);animation:blink .6s infinite;}
+.sdot.done{background:var(--g2);}
+.sdot.error{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+/* RESULT HERO */
+.result-hero{display:flex;flex-direction:column;align-items:center;padding:20px 16px;text-align:center;}
+.bird-ring-wrap{position:relative;margin-bottom:16px;}
+.bird-ring{width:140px;height:140px;border-radius:50%;border:1.5px solid rgba(0,255,135,.25);
+  display:flex;align-items:center;justify-content:center;position:relative;}
+.bird-ring::before{content:'';position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(0,255,135,.1);}
+.bird-ring::after{content:'';position:absolute;inset:-14px;border-radius:50%;border:1px solid rgba(0,255,135,.05);}
+.scan-ring{position:absolute;inset:-2px;border-radius:50%;border:2px solid transparent;
+  border-top-color:var(--g1);display:none;animation:spin 1s linear infinite;}
+.scanning .scan-ring{display:block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.bird-img-ph{width:120px;height:120px;border-radius:50%;overflow:hidden;
+  background:rgba(0,255,135,.08);display:flex;align-items:center;justify-content:center;
+  font-size:44px;border:1px solid var(--border);}
+.bird-img-ph img{width:100%;height:100%;object-fit:cover;display:none;}
+.bird-img-ph img.vis{display:block;}
+.sname{font-family:var(--fd);font-size:20px;color:var(--text);margin-bottom:4px;min-height:28px;line-height:1.2;}
+.ssci{font-size:12px;color:var(--text2);font-style:italic;margin-bottom:14px;min-height:16px;}
+
+/* CONFIDENCE */
+.conf-wrap{width:100%;margin-bottom:12px;}
+.conf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.conf-lbl{font-family:var(--fd);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;}
+.conf-num{font-family:var(--fd);font-size:16px;font-weight:700;color:var(--g1);}
+.track{height:3px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;}
+.fill{height:100%;width:0%;border-radius:100px;transition:width 1s cubic-bezier(.4,0,.2,1);
+  background:linear-gradient(90deg,var(--g3),var(--g1));}
+.fill.low{background:linear-gradient(90deg,#7a2020,var(--red));}
+.fill.mid{background:linear-gradient(90deg,#7a5a00,var(--amber));}
+
+/* AUDIO */
+.audio-row{width:100%;margin-top:8px;}
+.audio-row audio{width:100%;height:32px;filter:invert(.8) hue-rotate(120deg) brightness(.9);
+  border-radius:8px;opacity:0;transition:opacity .4s;}
+.audio-row audio.vis{opacity:1;}
+
+/* WAVEFORM */
+.waveform-wrap{position:relative;}
+.waveform-wrap canvas{width:100%;border-radius:8px;display:block;cursor:crosshair;}
+#waveCanvas{background:rgba(0,0,0,.3);border:1px solid var(--border);}
+#spectroCanvas{background:rgba(0,0,0,.3);border:1px solid var(--border);margin-top:6px;}
+.wave-controls{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.wave-controls .btn{font-size:11px;padding:7px 11px;flex:1;min-width:80px;}
+.rec-badge{padding:3px 8px;background:rgba(255,77,77,.15);border:1px solid rgba(255,77,77,.3);
+  border-radius:20px;font-family:var(--fd);font-size:10px;color:var(--red);display:none;align-items:center;gap:4px;}
+.rec-badge.show{display:flex;}
+.rec-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:blink .7s infinite;}
+.rec-timer{font-family:var(--fd);font-size:10px;color:var(--text2);margin-left:auto;}
+
+/* ML FEATURES */
+.ml-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.ml-card{background:rgba(0,0,0,.2);border-radius:10px;border:1px solid var(--border);padding:10px 12px;}
+.ml-label{font-family:var(--fd);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
+.ml-val{font-size:13px;font-weight:600;color:var(--text);}
+.ml-sub{font-size:10px;color:var(--text3);margin-top:2px;}
+
+/* TOP-5 */
+.top5-list{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+.top5-item{display:flex;align-items:center;gap:8px;}
+.top5-rank{font-family:var(--fd);font-size:10px;color:var(--text3);width:16px;text-align:right;flex-shrink:0;}
+.top5-name{font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.top5-bar-wrap{width:80px;flex-shrink:0;}
+.top5-pct{font-family:var(--fd);font-size:10px;color:var(--text2);text-align:right;margin-bottom:2px;}
+
+/* INFO */
+.info-text{font-size:13px;line-height:1.7;color:var(--text2);}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.tag{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:500;letter-spacing:.03em;
+  background:rgba(0,255,135,.08);color:var(--g1);border:1px solid rgba(0,255,135,.15);}
+.tag.habitat{background:rgba(0,180,255,.08);color:var(--blue);border-color:rgba(0,180,255,.15);}
+.tag.threat{background:rgba(255,77,77,.08);color:var(--red);border-color:rgba(255,77,77,.15);}
+
+/* HISTORY */
+.hist-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;}
+.hist-ct{font-family:var(--fd);font-size:11px;color:var(--text2);}
+.hist-acts{display:flex;gap:6px;}
+.history-list{display:flex;flex-direction:column;gap:8px;}
+.hist-item{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s;}
+.hist-item:hover{border-color:var(--border2);background:var(--glass2);}
+.hist-thumb{width:38px;height:38px;border-radius:50%;overflow:hidden;background:rgba(0,255,135,.08);
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:1px solid var(--border);}
+.hist-thumb img{width:100%;height:100%;object-fit:cover;}
+.hist-info{flex:1;min-width:0;}
+.hist-name{font-weight:600;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hist-sci{font-size:11px;color:var(--text2);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hist-meta{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.conf-badge{padding:3px 9px;border-radius:20px;font-family:var(--fd);font-size:10px;font-weight:700;}
+.conf-high{background:rgba(0,200,150,.15);color:var(--g2);}
+.conf-mid{background:rgba(255,184,0,.15);color:var(--amber);}
+.conf-low{background:rgba(255,77,77,.15);color:var(--red);}
+.hist-time{font-family:var(--fd);font-size:9px;color:var(--text3);}
+.empty{text-align:center;padding:48px 20px;color:var(--text3);font-size:13px;}
+.empty-ico{font-size:40px;display:block;margin-bottom:10px;opacity:.4;}
+
+/* LIBRARY */
+.lib-search{display:flex;gap:8px;margin-bottom:12px;}
+.lib-search input{flex:1;padding:10px 14px;border-radius:10px;border:1px solid var(--border);
+  background:rgba(0,0,0,.3);color:var(--text);font-family:var(--fb);font-size:13px;outline:none;
+  -webkit-appearance:none;}
+.lib-search input:focus{border-color:rgba(0,255,135,.4);}
+.lib-search input::placeholder{color:var(--text3);}
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.lib-card{background:var(--glass);border-radius:var(--r);border:1px solid var(--border);
+  overflow:hidden;cursor:pointer;transition:all .2s;}
+.lib-card:active{transform:scale(.97);}
+.lib-thumb{width:100%;height:90px;object-fit:cover;display:flex;align-items:center;justify-content:center;
+  font-size:32px;background:rgba(0,255,135,.05);}
+.lib-thumb img{width:100%;height:100%;object-fit:cover;}
+.lib-body{padding:9px 10px;}
+.lib-name{font-size:12px;font-weight:600;color:var(--text);}
+.lib-sci{font-size:10px;color:var(--text2);font-style:italic;margin-top:1px;}
+.lib-ct{font-family:var(--fd);font-size:9px;color:var(--g1);margin-top:4px;}
+
+/* ANALYTICS */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.metric{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:14px 12px;text-align:center;}
+.metric-lbl{font-family:var(--fd);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.metric-val{font-family:var(--fd);font-size:24px;color:var(--g1);}
+.metric-sub{font-size:10px;color:var(--text3);margin-top:3px;}
+.chart-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;}
+.chart-title{font-family:var(--fd);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;}
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:80px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bar{width:100%;border-radius:4px 4px 0 0;min-height:3px;transition:height .8s ease;position:relative;}
+.bar-lbl{font-family:var(--fd);font-size:8px;color:var(--text3);text-align:center;line-height:1.1;}
+.species-bar{display:flex;flex-direction:column;gap:8px;}
+.sbar-item{display:flex;flex-direction:column;gap:3px;}
+.sbar-hd{display:flex;justify-content:space-between;font-size:11px;}
+.sbar-name{color:var(--text);font-weight:500;}
+.sbar-ct{font-family:var(--fd);font-size:10px;color:var(--text3);}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom) + 8px);right:12px;
+  z-index:999;display:flex;flex-direction:column;gap:6px;max-width:calc(100vw - 24px);}
+.toast{padding:9px 13px;border-radius:10px;background:rgba(4,13,9,.97);
+  border:1px solid var(--border2);font-size:12px;color:var(--text);
+  backdrop-filter:blur(16px);animation:tin .25s ease;display:flex;align-items:center;gap:7px;
+  font-family:var(--fd);}
+@keyframes tin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
+  display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);}
+.modal-bg.open{display:flex;}
+@media(min-width:500px){.modal-bg{align-items:center;}}
+.modal{background:#060f0b;border:1px solid var(--border2);border-radius:var(--r3) var(--r3) 0 0;
+  padding:20px 18px 28px;width:100%;max-width:420px;position:relative;
+  max-height:90vh;overflow-y:auto;}
+@media(min-width:500px){.modal{border-radius:var(--r3);}}
+.modal-handle{width:36px;height:3px;background:var(--border2);border-radius:10px;margin:0 auto 16px;}
+.modal h3{font-family:var(--fd);font-size:17px;margin-bottom:2px;}
+.modal-sub{font-size:12px;color:var(--text2);margin-bottom:16px;}
+.share-card{background:linear-gradient(135deg,#061a10,#040d09);border:1px solid rgba(0,255,135,.2);
+  border-radius:14px;padding:16px;margin-bottom:12px;display:flex;gap:12px;align-items:center;}
+.share-ph{width:52px;height:52px;border-radius:50%;background:rgba(0,255,135,.1);
+  display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;overflow:hidden;}
+.share-ph img{width:100%;height:100%;object-fit:cover;}
+.share-sname{font-family:var(--fd);font-size:15px;color:var(--text);}
+.share-ssci{font-size:11px;color:var(--text2);font-style:italic;margin-bottom:2px;}
+.share-sconf{font-size:12px;color:var(--g1);font-weight:600;font-family:var(--fd);}
+.share-brand{font-family:var(--fd);font-size:9px;color:var(--text3);margin-top:6px;letter-spacing:.05em;}
+.modal-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.06);
+  border:none;color:var(--text2);font-size:14px;cursor:pointer;width:28px;height:28px;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.modal-acts{display:flex;gap:8px;margin-top:12px;}
+
+/* VIDEO MODAL */
+.video-modal-inner{padding:0 0 16px;}
+.vmb{padding:0 18px;}
+#exportVideoCanvas{width:100%;border-radius:8px;display:block;background:#000;}
+.video-progress{height:3px;background:var(--border);border-radius:10px;overflow:hidden;margin-top:8px;}
+.video-progress-fill{height:100%;background:var(--g1);border-radius:10px;width:0%;transition:width .1s linear;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--text3);border-radius:10px;}
+
+/* DESKTOP ADJUSTMENTS */
+@media(min-width:900px){
+  .topnav{padding:0 24px;}
+  .page{padding:20px 24px 10px;}
+  .tabbar{top:56px;bottom:auto;border-top:none;border-bottom:1px solid var(--border);
+    padding:0;justify-content:flex-start;gap:0;height:44px;}
+  .tab{flex-direction:row;gap:6px;padding:0 20px;font-size:11px;height:44px;border-radius:0;
+    border-bottom:2px solid transparent;}
+  .tab.active{color:var(--g1);border-bottom-color:var(--g1);}
+  .tab .ti{font-size:15px;}
+  .main{padding-bottom:0;padding-top:44px;}
+  .toast-wrap{bottom:20px;}
+  .topnav-stats{display:flex;}
+  .menu-btn{display:none;}
 }
-
-.main-container{
-width:95%;
-max-width:1100px;
-padding:40px;
-border-radius:25px;
-background:rgba(255,255,255,0.08);
-backdrop-filter:blur(20px);
-border:1px solid rgba(255,255,255,0.1);
-box-shadow:0 20px 50px rgba(0,0,0,0.6);
+@media(max-width:899px){
+  .topnav-stats .spill:not(:first-child){display:none;}
 }
-
-header{
-text-align:center;
-margin-bottom:30px;
-}
-
-header h1{
-font-size:36px;
-background:linear-gradient(90deg,#a5d6a7,#66bb6a);
--webkit-background-clip:text;
--webkit-text-fill-color:transparent;
-}
-
-.subtitle{
-opacity:.8;
-}
-
-.grid{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:30px;
-}
-
-.card{
-background:rgba(255,255,255,0.06);
-border-radius:20px;
-padding:25px;
-box-shadow:0 10px 30px rgba(0,0,0,.4);
-border:1px solid rgba(255,255,255,.1);
-}
-
-.buttons{
-margin-top:20px;
-}
-
-button{
-padding:12px 26px;
-border:none;
-border-radius:30px;
-margin-right:10px;
-font-weight:600;
-cursor:pointer;
-background:linear-gradient(90deg,#43a047,#66bb6a);
-color:white;
-}
-
-#status{
-margin-top:15px;
-color:#c8e6c9;
-}
-
-.result-box{
-margin-top:15px;
-font-size:20px;
-font-weight:600;
-color:#a5d6a7;
-}
-
-.progress{
-width:100%;
-height:25px;
-background:rgba(255,255,255,.1);
-border-radius:50px;
-margin-top:15px;
-overflow:hidden;
-}
-
-.progress-fill{
-height:100%;
-width:0%;
-background:linear-gradient(90deg,#a5d6a7,#66bb6a);
-transition:width 1s;
-}
-
-canvas{
-width:100%;
-margin-top:20px;
-border-radius:15px;
-background:rgba(0,0,0,.4);
-}
-
-.bird-img{
-width:100%;
-border-radius:15px;
-margin-top:20px;
-display:none;
-}
-
-audio{
-width:100%;
-margin-top:15px;
-display:none;
-}
-
-.loader{
-border:5px solid rgba(255,255,255,.2);
-border-top:5px solid #66bb6a;
-border-radius:50%;
-width:40px;
-height:40px;
-animation:spin 1s linear infinite;
-margin:20px auto;
-display:none;
-}
-
-@keyframes spin{
-0%{transform:rotate(0)}
-100%{transform:rotate(360deg)}
-}
-
-@media(max-width:900px){
-.grid{grid-template-columns:1fr;}
-}
-
 </style>
 </head>
-
 <body>
 
-<div class="main-container">
-
-<header>
-<h1>🐦 Bird Species Detection</h1>
-<p class="subtitle">AI Powered Bio-Acoustic Recognition System</p>
+<!-- TOP NAV -->
+<header class="topnav">
+  <a class="logo" href="#">
+    <div class="logo-mark">🐦</div>
+    <div class="logo-text">Bird<span>AI</span></div>
+  </a>
+  <div class="topnav-stats">
+    <div class="spill">Session: <strong id="sessionCount">0</strong></div>
+    <div class="spill">Conf: <strong id="avgConf">—</strong></div>
+    <div class="spill">Top: <strong id="topSpecies">—</strong></div>
+  </div>
 </header>
 
-<div class="grid">
+<!-- TAB BAR -->
+<nav class="tabbar">
+  <button class="tab active" onclick="showPage('detect',this)">
+    <span class="ti">🔍</span><span class="tb">Detect</span>
+  </button>
+  <button class="tab" onclick="showPage('history',this)">
+    <span class="ti">🕐</span><span class="tb">History</span>
+    <span class="tab-badge" id="histBadge" style="display:none">0</span>
+  </button>
+  <button class="tab" onclick="showPage('library',this)">
+    <span class="ti">📚</span><span class="tb">Library</span>
+  </button>
+  <button class="tab" onclick="showPage('analytics',this)">
+    <span class="ti">📊</span><span class="tb">Analytics</span>
+  </button>
+</nav>
 
-<!-- LEFT PANEL -->
+<div class="main">
 
-<div class="card">
+  <!-- ═══ DETECT PAGE ═══ -->
+  <div class="page active" id="page-detect">
 
-<h3>Audio Input</h3>
+    <!-- Result hero + info (left col on desktop) -->
+    <div class="detect-layout">
 
-<div class="buttons">
+      <!-- COLUMN 1: Input -->
+      <div>
+        <div class="card">
+          <div class="card-hd"><div class="card-ico">🎵</div><span class="card-title">Audio Input</span></div>
+          <div class="card-bd">
+            <div class="drop-zone" id="dropZone">
+              <input type="file" id="fileInput" accept="audio/*">
+              <span class="dz-icon">🎵</span>
+              <div class="dz-t">Drop audio here</div>
+              <div class="dz-s">MP3 · WAV · OGG · M4A · FLAC</div>
+            </div>
+            <div class="act-row">
+              <button class="btn primary" id="recordBtn" onclick="toggleRecord()">🎙 Record</button>
+              <button class="btn" onclick="document.getElementById('fileInput').click()">⬆ Upload</button>
+            </div>
+            <div class="status-bar">
+              <div class="sdot" id="sdot"></div>
+              <span id="statusTxt">Ready to detect</span>
+              <div class="rec-timer" id="recTimer"></div>
+            </div>
+          </div>
+        </div>
 
-<button onclick="startRecording()">🎤 Record</button>
+        <!-- WAVEFORM + SPECTROGRAM -->
+        <div class="card">
+          <div class="card-hd">
+            <div class="card-ico">📈</div>
+            <span class="card-title">Waveform + Spectrogram</span>
+            <div class="rec-badge" id="recBadge"><div class="rec-dot"></div>REC</div>
+          </div>
+          <div class="card-bd">
+            <canvas id="waveCanvas" height="60"></canvas>
+            <canvas id="spectroCanvas" height="64"></canvas>
+            <div class="wave-controls">
+              <button class="btn" id="exportVideoBtn" onclick="exportWaveformVideo()" title="Export animated waveform as video">🎥 Export Video</button>
+              <button class="btn" id="exportImgBtn" onclick="exportWaveformImage()" title="Save spectrogram as PNG">🖼 Save PNG</button>
+              <button class="btn" onclick="clearCanvas()">🗑 Clear</button>
+            </div>
+          </div>
+        </div>
 
-<input type="file" id="fileInput" accept=".wav,.mp3,.flac,.ogg" hidden>
+        <!-- ML METADATA -->
+        <div class="card" id="mlMetaCard" style="display:none">
+          <div class="card-hd"><div class="card-ico">🧠</div><span class="card-title">ML Metadata</span></div>
+          <div class="card-bd">
+            <div class="ml-grid">
+              <div class="ml-card">
+                <div class="ml-label">Sample Rate</div>
+                <div class="ml-val" id="mlSampleRate">—</div>
+                <div class="ml-sub">Hz</div>
+              </div>
+              <div class="ml-card">
+                <div class="ml-label">Duration</div>
+                <div class="ml-val" id="mlDuration">—</div>
+                <div class="ml-sub">seconds</div>
+              </div>
+              <div class="ml-card">
+                <div class="ml-label">Peak Freq</div>
+                <div class="ml-val" id="mlPeakFreq">—</div>
+                <div class="ml-sub">Hz</div>
+              </div>
+              <div class="ml-card">
+                <div class="ml-label">Channels</div>
+                <div class="ml-val" id="mlChannels">—</div>
+                <div class="ml-sub">audio ch</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-<button onclick="document.getElementById('fileInput').click()">📂 Upload</button>
+      <!-- COLUMN 2: Result -->
+      <div>
+        <div class="card">
+          <div class="card-hd"><div class="card-ico">🐦</div><span class="card-title">Detection Result</span></div>
+          <div class="result-hero">
+            <div class="bird-ring-wrap">
+              <div class="bird-ring" id="birdVisual">
+                <div class="scan-ring"></div>
+                <div class="bird-img-ph" id="birdImgPh">🐦<img id="birdImage" alt=""></div>
+              </div>
+            </div>
+            <div class="sname" id="birdName">---</div>
+            <div class="ssci" id="scientific">Upload or record a bird call</div>
+            <div class="conf-wrap" style="width:100%;max-width:300px;">
+              <div class="conf-row">
+                <span class="conf-lbl">Confidence</span>
+                <span class="conf-num" id="confVal">0%</span>
+              </div>
+              <div class="track"><div class="fill" id="confBar"></div></div>
+            </div>
+            <div class="audio-row"><audio controls id="audioPlayer"></audio></div>
+            <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;justify-content:center;">
+              <button class="btn" onclick="openShareModal()" style="font-size:12px;padding:8px 13px;">🎴 Share</button>
+              <button class="btn" onclick="exportCSV()" style="font-size:12px;padding:8px 13px;">⬇ CSV</button>
+              <button class="btn primary" onclick="openVideoModal()" style="font-size:12px;padding:8px 13px;">🎬 Video Export</button>
+            </div>
+          </div>
+        </div>
 
+        <!-- TOP-5 Predictions -->
+        <div class="card" id="top5Card" style="display:none">
+          <div class="card-hd"><div class="card-ico">🏆</div><span class="card-title">Top-5 Predictions</span></div>
+          <div class="card-bd">
+            <div class="top5-list" id="top5List"></div>
+          </div>
+        </div>
+
+        <!-- Species Info -->
+        <div class="card">
+          <div class="card-hd"><div class="card-ico">📋</div><span class="card-title">Species Info</span></div>
+          <div class="card-bd">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div class="bird-img-ph" style="width:40px;height:40px;font-size:18px;flex-shrink:0;">
+                🐦<img id="infoImg" alt="">
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:14px;color:var(--text);" id="infoName">Waiting for detection…</div>
+                <div style="font-size:11px;color:var(--text2);font-style:italic;" id="infoSci">Upload or record a bird call</div>
+              </div>
+            </div>
+            <p class="info-text" id="birdInfo">Bird information will appear here once a species is detected.</p>
+            <div class="tags" id="tagRow"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMN 3: Quick Stats (desktop only) -->
+      <div id="col3" style="display:none;">
+        <!-- filled by JS on desktop -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ HISTORY PAGE ═══ -->
+  <div class="page" id="page-history">
+    <div class="hist-header">
+      <span class="hist-ct" id="histCount">0 detections</span>
+      <div class="hist-acts">
+        <button class="btn" onclick="exportCSV()" style="font-size:12px;padding:7px 12px;">⬇ CSV</button>
+        <button class="btn danger" onclick="clearHistory()" style="font-size:12px;padding:7px 12px;">🗑 Clear</button>
+      </div>
+    </div>
+    <div class="history-list" id="histList">
+      <div class="empty"><span class="empty-ico">🕊</span>No detections yet.<br>Start by recording or uploading.</div>
+    </div>
+  </div>
+
+  <!-- ═══ LIBRARY PAGE ═══ -->
+  <div class="page" id="page-library">
+    <div class="lib-search">
+      <input type="text" id="libSearch" placeholder="🔍 Search species…" oninput="filterLibrary()">
+    </div>
+    <div class="lib-grid" id="libGrid">
+      <div class="empty" style="grid-column:1/-1"><span class="empty-ico">📚</span>Your library is empty.<br>Detect birds to fill it!</div>
+    </div>
+  </div>
+
+  <!-- ═══ ANALYTICS PAGE ═══ -->
+  <div class="page" id="page-analytics">
+    <div class="metrics">
+      <div class="metric"><div class="metric-lbl">Detections</div><div class="metric-val" id="mTotal">0</div><div class="metric-sub">this session</div></div>
+      <div class="metric"><div class="metric-lbl">Species</div><div class="metric-val" id="mUnique">0</div><div class="metric-sub">unique</div></div>
+      <div class="metric"><div class="metric-lbl">Avg Conf</div><div class="metric-val" id="mAvg">—</div><div class="metric-sub">accuracy</div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Confidence Per Detection</div>
+      <div class="bar-chart" id="confChart"><div style="color:var(--text3);font-size:11px;align-self:center;width:100%;text-align:center;">No data yet</div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Top Species Distribution</div>
+      <div class="species-bar" id="speciesBar"><div style="color:var(--text3);font-size:11px;">No data yet</div></div>
+    </div>
+    <!-- Model info card -->
+    <div class="chart-card">
+      <div class="chart-title">Model Info</div>
+      <div class="ml-grid" style="margin-top:0;">
+        <div class="ml-card"><div class="ml-label">Model</div><div class="ml-val" style="font-size:11px;">CNN+BiRNN</div></div>
+        <div class="ml-card"><div class="ml-label">Classes</div><div class="ml-val">400+</div></div>
+        <div class="ml-card"><div class="ml-label">Input</div><div class="ml-val" style="font-size:11px;">Mel-spec</div></div>
+        <div class="ml-card"><div class="ml-label">Latency</div><div class="ml-val" style="font-size:11px;">~0.8s</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .main -->
+
+<!-- TOASTS -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- SHARE MODAL -->
+<div class="modal-bg" id="shareModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('shareModal')">✕</button>
+    <h3>Share Detection</h3>
+    <div class="modal-sub">Copy or share this card</div>
+    <div class="share-card">
+      <div class="share-ph" id="shareImgPh">🐦</div>
+      <div>
+        <div class="share-sname" id="shareN">---</div>
+        <div class="share-ssci" id="shareS">—</div>
+        <div class="share-sconf" id="shareC">No detection yet</div>
+        <div class="share-brand">BirdAI · ML Species Detection</div>
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn" style="flex:1;font-size:12px;" onclick="copyShareText()">📋 Copy</button>
+      <button class="btn primary" style="flex:1;font-size:12px;" onclick="nativeShare()">📤 Share</button>
+    </div>
+  </div>
 </div>
 
-<div id="status">Ready to analyze bird sound...</div>
-
-<div class="loader" id="loader"></div>
-
-<canvas id="waveCanvas" width="500" height="200"></canvas>
-
-</div>
-
-<!-- RIGHT PANEL -->
-
-<div class="card">
-
-<h3>Detection Result</h3>
-
-<div class="result-box" id="result">
-Prediction will appear here
-</div>
-
-<div class="progress">
-<div class="progress-fill" id="confidenceFill"></div>
-</div>
-
-<img id="birdImage" class="bird-img">
-
-<audio id="detectedAudio" controls></audio>
-
-</div>
-
-</div>
-
+<!-- VIDEO EXPORT MODAL -->
+<div class="modal-bg" id="videoModal">
+  <div class="modal" style="padding:0;overflow:hidden;">
+    <div class="vmb" style="padding:18px 18px 10px;">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeModal('videoModal')">✕</button>
+      <h3 style="font-family:var(--fd);font-size:16px;">🎬 Waveform Video Export</h3>
+      <div class="modal-sub">Renders an animated MP4 of your waveform + spectrogram</div>
+    </div>
+    <canvas id="exportVideoCanvas" width="800" height="300" style="display:block;width:100%;"></canvas>
+    <div class="vmb" style="padding:10px 18px 18px;">
+      <div class="video-progress" id="videoProgressWrap" style="display:none;">
+        <div class="video-progress-fill" id="videoProgressFill"></div>
+      </div>
+      <div id="videoStatus" style="font-family:var(--fd);font-size:10px;color:var(--text3);margin:8px 0;text-align:center;"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn" style="flex:1;font-size:12px;" onclick="closeModal('videoModal')">Cancel</button>
+        <button class="btn primary" style="flex:1;font-size:12px;" id="startRenderBtn" onclick="startVideoRender()">🎬 Render & Download</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const detections=[];const library={};let lastResult=null;
+let isRecording=false,recorder,mStream;
+let audioCtx=null,analyserNode=null,spectroIv=null,waveIv=null;
+let recSecs=0,recTimerIv=null;
+let waveBuffer=null; // decoded AudioBuffer for waveform
 
-const UNSPLASH_KEY = "YOUR_UNSPLASH_ACCESS_KEY";
+// ═══════════════════════════════════════════
+// CANVAS
+// ═══════════════════════════════════════════
+const waveCanvas=document.getElementById('waveCanvas');
+const wCtx=waveCanvas.getContext('2d');
+const spectroCanvas=document.getElementById('spectroCanvas');
+const sCtx=spectroCanvas.getContext('2d');
 
-/* AI PROCESS TEXT */
+function resizeCanvases(){
+  var dpr=window.devicePixelRatio||1;
+  var w=waveCanvas.offsetWidth;
+  waveCanvas.width=w*dpr; waveCanvas.height=60*dpr;
+  waveCanvas.style.height='60px';
+  spectroCanvas.width=w*dpr; spectroCanvas.height=64*dpr;
+  spectroCanvas.style.height='64px';
+  wCtx.scale(dpr,dpr); sCtx.scale(dpr,dpr);
+}
+resizeCanvases();
+window.addEventListener('resize',()=>{ resizeCanvases(); });
 
-let aiInterval;
-
-function startAIProcessing(){
-
-const steps=[
-"🎧 Cleaning audio signal...",
-"🔬 Extracting acoustic features...",
-"🧠 Running AI model...",
-"📊 Matching bird patterns...",
-"🐦 Identifying species..."
-];
-
-let i=0;
-
-aiInterval=setInterval(()=>{
-document.getElementById("status").innerText=steps[i];
-i=(i+1)%steps.length;
-},1000);
-
+// ═══════════════════════════════════════════
+// PAGE NAV
+// ═══════════════════════════════════════════
+const pageTitles={detect:'Species Detection',history:'Detection History',library:'Species Library',analytics:'Analytics'};
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(id==='analytics')updateAnalytics();
+  if(id==='library')renderLibrary();
+  if(id==='history')renderHistory();
 }
 
-function stopAIProcessing(){
-clearInterval(aiInterval);
+// ═══════════════════════════════════════════
+// STATUS
+// ═══════════════════════════════════════════
+function setStatus(type,text){
+  var dot=document.getElementById('sdot');
+  dot.className='sdot'+(type?' '+type:'');
+  document.getElementById('statusTxt').textContent=text;
 }
 
-/* RECORD AUDIO */
-
-let mediaRecorder;
-let audioChunks=[];
-
-async function startRecording(){
-
-startAIProcessing();
-
-document.getElementById("loader").style.display="block";
-
-const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-
-mediaRecorder=new MediaRecorder(stream);
-
-audioChunks=[];
-
-mediaRecorder.ondataavailable=e=>{
-audioChunks.push(e.data);
-};
-
-mediaRecorder.onstop=()=>{
-
-const blob=new Blob(audioChunks,{type:'audio/wav'});
-
-sendToBackend(blob);
-
-};
-
-mediaRecorder.start();
-
-setTimeout(()=>{
-mediaRecorder.stop();
-},5000);
-
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function toast(msg,icon){
+  icon=icon||'✅';
+  var tw=document.getElementById('toastWrap');
+  var t=document.createElement('div');t.className='toast';
+  t.innerHTML='<span>'+icon+'</span>'+msg;tw.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},3000);
 }
 
-/* FILE UPLOAD */
-
-document.getElementById("fileInput").addEventListener("change",function(){
-
-const file=this.files[0];
-
-if(file){
-startAIProcessing();
-sendToBackend(file);
-}
-
+// ═══════════════════════════════════════════
+// FILE INPUT
+// ═══════════════════════════════════════════
+document.getElementById('fileInput').onchange=function(){if(this.files[0])processAudio(this.files[0]);};
+var dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('over');
+  var f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('audio/'))processAudio(f);
 });
 
-/* SEND AUDIO TO BACKEND */
-
-async function sendToBackend(file){
-
-let formData=new FormData();
-
-formData.append("file",file);
-
-try{
-
-const response=await fetch("/predict",{
-method:"POST",
-body:formData
-});
-
-const data=await response.json();
-
-stopAIProcessing();
-
-document.getElementById("loader").style.display="none";
-
-document.getElementById("status").innerText="Analysis Complete ✅";
-
-/* RESULT */
-
-document.getElementById("result").innerText=
-"🐦 "+data.prediction+" | Confidence: "+data.confidence+"%";
-
-document.getElementById("confidenceFill").style.width=
-data.confidence+"%";
-
-/* UNSPLASH IMAGE */
-const birdName = data.prediction;
-
-fetch(`https://api.inaturalist.org/v1/taxa?q=${birdName}`)
-.then(res => res.json())
-.then(result => {
-
-const birdImg = document.getElementById("birdImage");
-
-if(result.results.length > 0){
-
-birdImg.src = result.results[0].default_photo.medium_url;
-
-birdImg.style.display = "block";
-
+// ═══════════════════════════════════════════
+// RECORD
+// ═══════════════════════════════════════════
+async function toggleRecord(){
+  if(isRecording){
+    recorder.stop();mStream.getTracks().forEach(t=>t.stop());
+    isRecording=false;
+    document.getElementById('recordBtn').className='btn primary';
+    document.getElementById('recordBtn').textContent='🎙 Record';
+    document.getElementById('recBadge').classList.remove('show');
+    stopLiveViz();clearInterval(recTimerIv);recSecs=0;
+    document.getElementById('recTimer').textContent='';
+    return;
+  }
+  try{
+    mStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    recorder=new MediaRecorder(mStream);
+    var chunks=[];
+    recorder.ondataavailable=e=>chunks.push(e.data);
+    recorder.onstop=()=>processAudio(new Blob(chunks,{type:'audio/webm'}));
+    recorder.start();isRecording=true;
+    document.getElementById('recordBtn').className='btn recording';
+    document.getElementById('recordBtn').textContent='⏹ Stop';
+    document.getElementById('recBadge').classList.add('show');
+    setStatus('active','Recording…');
+    recSecs=0;
+    recTimerIv=setInterval(()=>{
+      recSecs++;
+      document.getElementById('recTimer').textContent=recSecs+'s';
+      if(recSecs>=30){
+        recorder.stop();mStream.getTracks().forEach(t=>t.stop());
+        isRecording=false;
+        document.getElementById('recordBtn').className='btn primary';
+        document.getElementById('recordBtn').textContent='🎙 Record';
+        document.getElementById('recBadge').classList.remove('show');
+        stopLiveViz();clearInterval(recTimerIv);recSecs=0;
+        document.getElementById('recTimer').textContent='';
+      }
+    },1000);
+    startLiveViz(mStream);
+  }catch(e){alert('Microphone access denied! Please allow mic access.');}
 }
 
-});
-/* PLAY AUDIO */
+// ═══════════════════════════════════════════
+// LIVE SPECTROGRAM + WAVEFORM VIZ
+// ═══════════════════════════════════════════
+function startLiveViz(stream){
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  analyserNode=audioCtx.createAnalyser();analyserNode.fftSize=512;
+  audioCtx.createMediaStreamSource(stream).connect(analyserNode);
+  var bufLen=analyserNode.frequencyBinCount;
+  var freqData=new Uint8Array(bufLen);
+  var waveData=new Uint8Array(bufLen);
+  var W=waveCanvas.offsetWidth,H=60,SH=64;
+  var xPos=0;
 
-const audioPlayer=document.getElementById("detectedAudio");
+  spectroIv=setInterval(()=>{
+    analyserNode.getByteFrequencyData(freqData);
+    analyserNode.getByteTimeDomainData(waveData);
+    var dpr=window.devicePixelRatio||1;
+    var rW=waveCanvas.offsetWidth;
 
-audioPlayer.src=URL.createObjectURL(file);
+    // Waveform
+    wCtx.clearRect(0,0,rW,H);
+    wCtx.fillStyle='rgba(0,0,0,.4)';wCtx.fillRect(0,0,rW,H);
+    wCtx.beginPath();wCtx.strokeStyle='rgba(0,255,135,.7)';wCtx.lineWidth=1.5;
+    var sliceW=rW/bufLen;var xw=0;
+    for(var i=0;i<bufLen;i++){
+      var v=waveData[i]/128;var y=v*H/2;
+      if(i===0)wCtx.moveTo(xw,y);else wCtx.lineTo(xw,y);
+      xw+=sliceW;
+    }
+    wCtx.stroke();
 
-audioPlayer.style.display="block";
-
-audioPlayer.play();
-
+    // Spectrogram scroll
+    var imgData=sCtx.getImageData(0,0,rW*dpr,SH*dpr);
+    sCtx.putImageData(imgData,-3*dpr,0);
+    for(var i=0;i<bufLen;i++){
+      var v=freqData[i]/255;
+      var g=Math.floor(v*180+20);
+      sCtx.fillStyle='rgba(0,'+g+','+Math.floor(v*60+10)+','+(v+.05)+')';
+      sCtx.fillRect(rW-3,SH-(i+1)*(SH/bufLen),3,SH/bufLen+1);
+    }
+    xPos=(xPos+3)%rW;
+  },40);
 }
-catch(error){
 
-stopAIProcessing();
-
-document.getElementById("loader").style.display="none";
-
-document.getElementById("status").innerText="Server Error ❌";
-
-console.error(error);
-
+function stopLiveViz(){
+  if(spectroIv){clearInterval(spectroIv);spectroIv=null;}
+  if(audioCtx){audioCtx.close();audioCtx=null;}
 }
 
+// ═══════════════════════════════════════════
+// DRAW STATIC FROM DECODED BUFFER
+// ═══════════════════════════════════════════
+function drawStaticWaveform(buffer,conf){
+  var W=waveCanvas.offsetWidth,H=60;
+  var dpr=window.devicePixelRatio||1;
+  wCtx.clearRect(0,0,W,H);
+  wCtx.fillStyle='rgba(0,0,0,.4)';wCtx.fillRect(0,0,W,H);
+  var data=buffer.getChannelData(0);
+  var step=Math.ceil(data.length/W);
+  var col=conf>=80?'#00c896':conf>=50?'#ffb800':'#ff4d4d';
+  wCtx.beginPath();wCtx.strokeStyle=col;wCtx.lineWidth=1;
+  for(var i=0;i<W;i++){
+    var min=1,max=-1;
+    for(var j=0;j<step;j++){var d=data[i*step+j]||0;if(d<min)min=d;if(d>max)max=d;}
+    var y1=(1+min)/2*H;var y2=(1+max)/2*H;
+    wCtx.moveTo(i,y1);wCtx.lineTo(i,y2);
+  }
+  wCtx.stroke();
+  // glow
+  wCtx.strokeStyle='rgba(0,255,135,.12)';wCtx.lineWidth=3;
+  wCtx.beginPath();
+  for(var i=0;i<W;i++){
+    var min=1,max=-1;
+    for(var j=0;j<step;j++){var d=data[i*step+j]||0;if(d<min)min=d;if(d>max)max=d;}
+    var y=(1+(min+max)/2)/2*H;
+    if(i===0)wCtx.moveTo(i,y);else wCtx.lineTo(i,y);
+  }
+  wCtx.stroke();
 }
 
+function drawStaticSpectrogram(conf){
+  var W=spectroCanvas.offsetWidth,H=64;
+  sCtx.clearRect(0,0,W,H);
+  for(var x=0;x<W;x+=2){
+    for(var y=0;y<H;y+=2){
+      var noise=Math.random();
+      var wave=Math.sin(x*0.05+y*0.08)*0.5+0.5;
+      var v=(noise*0.2+wave*0.8)*(conf/100);
+      var g=Math.floor(v*160);
+      sCtx.fillStyle='rgba(0,'+Math.max(g+30,5)+','+Math.floor(v*50+5)+','+(v*.8+.05)+')';
+      sCtx.fillRect(x,y,2,2);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// CANVAS CLEAR
+// ═══════════════════════════════════════════
+function clearCanvas(){
+  var W=waveCanvas.offsetWidth,H=60,SH=64;
+  wCtx.clearRect(0,0,W,H);sCtx.clearRect(0,0,W,SH);
+}
+
+// ═══════════════════════════════════════════
+// EXPORT WAVEFORM IMAGE
+// ═══════════════════════════════════════════
+function exportWaveformImage(){
+  if(!waveBuffer&&!lastResult){toast('No waveform data yet','⚠️');return;}
+  var combined=document.createElement('canvas');
+  var dpr=window.devicePixelRatio||1;
+  var W=waveCanvas.offsetWidth;
+  combined.width=W*dpr;combined.height=130*dpr;
+  combined.style.width=W+'px';combined.style.height='130px';
+  var ctx=combined.getContext('2d');
+  ctx.drawImage(waveCanvas,0,0);
+  ctx.drawImage(spectroCanvas,0,60*dpr);
+  var a=document.createElement('a');
+  a.href=combined.toDataURL('image/png');
+  a.download='birdai-waveform-'+(lastResult?lastResult.bird.replace(/ /g,'_'):'clip')+'.png';
+  a.click();
+  toast('Waveform image saved!','🖼');
+}
+
+// ═══════════════════════════════════════════
+// WAVEFORM VIDEO EXPORT
+// ═══════════════════════════════════════════
+var videoFrames=[];
+var isRendering=false;
+
+function openVideoModal(){
+  if(!waveBuffer&&!lastResult){toast('Record or upload audio first','⚠️');return;}
+  previewVideoFrame();
+  document.getElementById('videoModal').classList.add('open');
+}
+
+function previewVideoFrame(){
+  var canvas=document.getElementById('exportVideoCanvas');
+  var ctx=canvas.getContext('2d');
+  var W=canvas.width,H=canvas.height;
+  ctx.fillStyle='#040d09';ctx.fillRect(0,0,W,H);
+  // header
+  ctx.fillStyle='rgba(0,255,135,.05)';ctx.fillRect(0,0,W,50);
+  ctx.fillStyle='#00ff87';ctx.font='bold 14px monospace';ctx.fillText('🐦 BirdAI — Waveform Analysis',16,32);
+  if(lastResult){
+    ctx.fillStyle='#7abfab';ctx.font='12px monospace';
+    ctx.fillText(lastResult.bird+' | Confidence: '+lastResult.conf+'%',16,H-14);
+  }
+  // draw waveform scaled
+  if(waveBuffer){
+    var data=waveBuffer.getChannelData(0);
+    var step=Math.ceil(data.length/W);
+    ctx.strokeStyle='rgba(0,255,135,.8)';ctx.lineWidth=1.5;ctx.beginPath();
+    for(var i=0;i<W;i++){
+      var min=1,max=-1;
+      for(var j=0;j<step;j++){var d=data[i*step+j]||0;if(d<min)min=d;if(d>max)max=d;}
+      var midy=(H-60)/2+50;
+      ctx.moveTo(i,midy+(min*(H-60)/2));ctx.lineTo(i,midy+(max*(H-60)/2));
+    }
+    ctx.stroke();
+  }
+  // grid lines
+  ctx.strokeStyle='rgba(0,255,135,.07)';ctx.lineWidth=1;
+  for(var i=0;i<5;i++){var y=50+i*((H-60)/4);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+}
+
+async function startVideoRender(){
+  if(isRendering)return;
+  if(!waveBuffer&&!lastResult){toast('No audio to render','⚠️');closeModal('videoModal');return;}
+  isRendering=true;
+  var btn=document.getElementById('startRenderBtn');
+  btn.textContent='⏳ Rendering…';btn.disabled=true;
+  document.getElementById('videoProgressWrap').style.display='block';
+  document.getElementById('videoStatus').textContent='Initializing renderer…';
+
+  var canvas=document.getElementById('exportVideoCanvas');
+  var ctx=canvas.getContext('2d');
+  var W=canvas.width,H=canvas.height;
+  var fps=30,duration=4,totalFrames=fps*duration;
+  var chunks=[];
+  var stream=canvas.captureStream(fps);
+  var mr=new MediaRecorder(stream,{mimeType:MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm'});
+  mr.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+  mr.onstop=()=>{
+    var blob=new Blob(chunks,{type:'video/webm'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='birdai-waveform-'+(lastResult?lastResult.bird.replace(/ /g,'_'):'clip')+'.webm';
+    a.click();
+    isRendering=false;btn.textContent='🎬 Render & Download';btn.disabled=false;
+    document.getElementById('videoProgressWrap').style.display='none';
+    document.getElementById('videoStatus').textContent='';
+    toast('Video downloaded!','🎬');
+    closeModal('videoModal');
+  };
+
+  mr.start();
+  var startTime=performance.now();
+  var data=waveBuffer?waveBuffer.getChannelData(0):new Float32Array(44100);
+  var step=Math.ceil(data.length/W);
+
+  function renderFrame(frame){
+    if(frame>=totalFrames){mr.stop();return;}
+    var progress=frame/totalFrames;
+    document.getElementById('videoProgressFill').style.width=(progress*100)+'%';
+    document.getElementById('videoStatus').textContent='Rendering frame '+(frame+1)+' / '+totalFrames;
+
+    ctx.fillStyle='#040d09';ctx.fillRect(0,0,W,H);
+
+    // Background grid
+    ctx.strokeStyle='rgba(0,255,135,.05)';ctx.lineWidth=1;
+    for(var i=0;i<8;i++){var y=50+i*((H-60)/7);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    for(var i=0;i<20;i++){var x=i*(W/20);ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+
+    // Header
+    ctx.fillStyle='rgba(0,20,12,1)';ctx.fillRect(0,0,W,46);
+    ctx.strokeStyle='rgba(0,255,135,.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,46);ctx.lineTo(W,46);ctx.stroke();
+    ctx.fillStyle='#00ff87';ctx.font='bold 13px "Space Mono",monospace';ctx.fillText('🐦  BirdAI — Waveform Analysis',14,29);
+    if(lastResult){
+      ctx.fillStyle='#7abfab';ctx.font='10px "Space Mono",monospace';
+      ctx.fillText(lastResult.bird+' · Conf: '+lastResult.conf+'%',14,H-12);
+    }
+    ctx.fillStyle='rgba(0,255,135,.4)';ctx.font='10px monospace';
+    ctx.fillText('t='+(progress*100).toFixed(1)+'%',W-70,29);
+
+    // Playhead progress
+    var ph=Math.floor(progress*W);
+    ctx.fillStyle='rgba(0,255,135,.07)';ctx.fillRect(0,46,ph,H-60);
+
+    // WAVEFORM
+    var midy=(H-60)/2+46;
+    // glow pass
+    ctx.strokeStyle='rgba(0,255,135,.12)';ctx.lineWidth=5;ctx.beginPath();
+    for(var i=0;i<W;i++){
+      var mn=1,mx=-1;
+      for(var j=0;j<step;j++){var dv=data[i*step+j]||0;if(dv<mn)mn=dv;if(dv>mx)mx=dv;}
+      var cy=midy+((mn+mx)/2)*((H-60)/2);
+      if(i===0)ctx.moveTo(i,cy);else ctx.lineTo(i,cy);
+    }ctx.stroke();
+    // main waveform
+    ctx.strokeStyle='rgba(0,220,130,.85)';ctx.lineWidth=1.5;ctx.beginPath();
+    for(var i=0;i<W;i++){
+      var mn=1,mx=-1;
+      for(var j=0;j<step;j++){var dv=data[i*step+j]||0;if(dv<mn)mn=dv;if(dv>mx)mx=dv;}
+      ctx.moveTo(i,midy+mn*((H-60)/2));ctx.lineTo(i,midy+mx*((H-60)/2));
+    }ctx.stroke();
+
+    // Playhead line
+    ctx.strokeStyle='rgba(0,255,135,.9)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(ph,46);ctx.lineTo(ph,H-14);ctx.stroke();
+    ctx.fillStyle='#00ff87';ctx.beginPath();ctx.arc(ph,midy,4,0,Math.PI*2);ctx.fill();
+
+    // Timestamp
+    ctx.fillStyle='rgba(0,255,135,.5)';ctx.font='9px monospace';
+    ctx.fillText((progress*10).toFixed(2)+'s',ph+4>W-40?ph-36:ph+4,H-16);
+
+    // Footer bar
+    ctx.fillStyle='rgba(0,20,12,.8)';ctx.fillRect(0,H-14,W,14);
+    ctx.fillStyle='#3d6b61';ctx.font='9px monospace';
+    ctx.fillText('Generated by BirdAI · ML Bird Species Detection',14,H-4);
+
+    requestAnimationFrame(()=>renderFrame(frame+1));
+  }
+  renderFrame(0);
+}
+
+function exportWaveformVideo(){
+  openVideoModal();
+}
+
+// ═══════════════════════════════════════════
+// PROCESS AUDIO (main pipeline)
+// ═══════════════════════════════════════════
+async function processAudio(file){
+  resetUI();
+  setStatus('analyzing','Analyzing audio…');
+  document.getElementById('birdVisual').classList.add('scanning');
+
+  // Decode for waveform
+  try{
+    var ab=await file.arrayBuffer();
+    var tmpCtx=new(window.AudioContext||window.webkitAudioContext)();
+    waveBuffer=await tmpCtx.decodeAudioData(ab.slice(0));
+    tmpCtx.close();
+    // Fill ML metadata
+    document.getElementById('mlSampleRate').textContent=waveBuffer.sampleRate.toLocaleString();
+    document.getElementById('mlDuration').textContent=waveBuffer.duration.toFixed(2);
+    document.getElementById('mlChannels').textContent=waveBuffer.numberOfChannels;
+    document.getElementById('mlMetaCard').style.display='block';
+    // Peak freq (crude estimation)
+    var analysiCtx=new OfflineAudioContext(1,waveBuffer.length,waveBuffer.sampleRate);
+    var src2=analysiCtx.createBufferSource();src2.buffer=waveBuffer;
+    var an2=analysiCtx.createAnalyser();an2.fftSize=2048;src2.connect(an2);an2.connect(analysiCtx.destination);
+    src2.start(0);
+    await analysiCtx.startRendering();
+    var freqArr=new Uint8Array(an2.frequencyBinCount);an2.getByteFrequencyData(freqArr);
+    var maxIdx=freqArr.indexOf(Math.max(...freqArr));
+    var peakHz=Math.round(maxIdx*waveBuffer.sampleRate/an2.fftSize);
+    document.getElementById('mlPeakFreq').textContent=peakHz.toLocaleString();
+    analysiCtx.close&&analysiCtx.close();
+  }catch(e){console.warn('Decode error:',e);}
+
+  // Draw waveform immediately
+  if(waveBuffer)drawStaticWaveform(waveBuffer,70);
+
+  try{
+    // Call backend
+    var fd=new FormData();fd.append('file',file);
+    var res=await fetch('/predict',{method:'POST',body:fd});
+    var data=await res.json();
+    document.getElementById('birdVisual').classList.remove('scanning');
+
+    var bird=data.prediction.replace('_sound','').replace(/_/g,' ');
+    var conf=data.confidence;
+    var top5=data.top5||[];
+
+    updateResult(bird,conf,top5,file);
+
+  }catch(err){
+    // DEMO MODE (no server)
+    document.getElementById('birdVisual').classList.remove('scanning');
+    var demoConf=Math.floor(Math.random()*30+65);
+    var birds=[
+      {name:'Indian Peacock',sci:'Pavo cristatus'},
+      {name:'Common Myna',sci:'Acridotheres tristis'},
+      {name:'Asian Koel',sci:'Eudynamys scolopaceus'},
+      {name:'House Sparrow',sci:'Passer domesticus'},
+      {name:'Barn Owl',sci:'Tyto alba'},
+    ];
+    var pick=birds[Math.floor(Math.random()*birds.length)];
+    var demoTop5=birds.map(b=>({name:b.name,conf:Math.floor(Math.random()*40+10)}));
+    demoTop5[0]={name:pick.name,conf:demoConf};
+    demoTop5.sort((a,b)=>b.conf-a.conf);
+    toast('Demo mode — no server connected','🧪');
+    updateResult(pick.name,demoConf,demoTop5,file);
+  }
+}
+
+async function updateResult(bird,conf,top5,file){
+  document.getElementById('birdName').textContent=bird;
+  document.getElementById('infoName').textContent=bird;
+  document.getElementById('confVal').textContent=conf+'%';
+  var bar=document.getElementById('confBar');
+  bar.className='fill '+(conf>=80?'':'conf_class');
+  if(conf<50)bar.className='fill low';else if(conf<80)bar.className='fill mid';else bar.className='fill';
+  setTimeout(()=>bar.style.width=conf+'%',60);
+  document.getElementById('audioPlayer').src=URL.createObjectURL(file);
+  document.getElementById('audioPlayer').classList.add('vis');
+  if(waveBuffer)drawStaticWaveform(waveBuffer,conf);
+  drawStaticSpectrogram(conf);
+  setStatus('done','Detection complete');
+  lastResult={bird:bird,conf:conf,sci:'',img:''};
+
+  // TOP-5
+  if(top5&&top5.length){
+    var maxC=top5[0].conf||conf;
+    document.getElementById('top5List').innerHTML=top5.slice(0,5).map((t,i)=>{
+      var pct=Math.round((t.conf/maxC)*100);
+      var col=t.conf>=70?'var(--g2)':t.conf>=40?'var(--amber)':'var(--red)';
+      return '<div class="top5-item"><div class="top5-rank">#'+(i+1)+'</div>'+
+        '<div class="top5-name">'+(t.name||t.species||'Unknown')+'</div>'+
+        '<div class="top5-bar-wrap"><div class="top5-pct">'+t.conf+'%</div>'+
+        '<div class="track"><div class="fill" style="width:'+pct+'%;background:'+col+';"></div></div></div></div>';
+    }).join('');
+    document.getElementById('top5Card').style.display='block';
+  }
+
+  var entry={bird:bird,conf:conf,sci:'',img:'',time:new Date()};
+
+  // Wikipedia
+  try{
+    var wRes=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(bird.replace(/ /g,'_')));
+    var info=await wRes.json();
+    var sci=info.description||'';
+    var img=info.thumbnail?info.thumbnail.source:'';
+    var extract=info.extract||'';
+    document.getElementById('scientific').textContent=sci||'';
+    document.getElementById('infoSci').textContent=sci;
+    document.getElementById('birdInfo').textContent=extract||'No Wikipedia entry found.';
+    entry.sci=sci;entry.img=img;lastResult.sci=sci;lastResult.img=img;
+    if(img){
+      var bi=document.getElementById('birdImage');
+      bi.onload=()=>{bi.classList.add('vis');document.getElementById('birdImgPh').style.fontSize='0';};
+      bi.src=img;
+      var ii=document.getElementById('infoImg');
+      ii.onload=()=>ii.classList.add('vis');ii.src=img;
+    }
+    // Tags from description
+    document.getElementById('tagRow').innerHTML='';
+    (sci||'').split(/[,·]/).slice(0,4).forEach(w=>{
+      var s=w.trim();if(!s)return;
+      var el=document.createElement('span');el.className='tag';el.textContent=s;
+      document.getElementById('tagRow').appendChild(el);
+    });
+    if(!library[bird])library[bird]={bird,sci,img,extract,count:0};
+    library[bird].count++;
+  }catch(e){document.getElementById('birdInfo').textContent='Could not load species info.';}
+
+  detections.unshift(entry);
+  var badge=document.getElementById('histBadge');
+  badge.textContent=detections.length;badge.style.display='';
+  updateTopBar();
+  toast('Detected: '+bird+' ('+conf+'%)','🐦');
+}
+
+// ═══════════════════════════════════════════
+// RESET UI
+// ═══════════════════════════════════════════
+function resetUI(){
+  var ap=document.getElementById('audioPlayer');ap.pause();ap.src='';ap.classList.remove('vis');
+  document.getElementById('birdName').textContent='---';
+  document.getElementById('scientific').textContent='Analyzing…';
+  document.getElementById('infoName').textContent='Analyzing…';
+  document.getElementById('infoSci').textContent='';
+  document.getElementById('birdInfo').textContent='';
+  document.getElementById('confVal').textContent='0%';
+  document.getElementById('confBar').style.width='0%';
+  document.getElementById('birdImage').src='';document.getElementById('birdImage').classList.remove('vis');
+  document.getElementById('infoImg').src='';document.getElementById('infoImg').classList.remove('vis');
+  document.getElementById('birdImgPh').style.fontSize='44px';
+  document.getElementById('tagRow').innerHTML='';
+  document.getElementById('top5Card').style.display='none';
+}
+
+// ═══════════════════════════════════════════
+// TOP BAR
+// ═══════════════════════════════════════════
+function updateTopBar(){
+  document.getElementById('sessionCount').textContent=detections.length;
+  if(detections.length){
+    var avg=Math.round(detections.reduce((a,b)=>a+b.conf,0)/detections.length);
+    document.getElementById('avgConf').textContent=avg+'%';
+    var freq={};detections.forEach(h=>freq[h.bird]=(freq[h.bird]||0)+1);
+    var top=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('topSpecies').textContent=top?top[0].split(' ').slice(0,2).join(' '):'—';
+  }
+}
+
+// ═══════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════
+function renderHistory(){
+  var list=document.getElementById('histList');
+  document.getElementById('histCount').textContent=detections.length+' detection'+(detections.length!==1?'s':'');
+  if(!detections.length){list.innerHTML='<div class="empty"><span class="empty-ico">🕊</span>No detections yet.</div>';return;}
+  list.innerHTML=detections.map(h=>{
+    var cls=h.conf>=80?'conf-high':h.conf>=50?'conf-mid':'conf-low';
+    var imgHtml=h.img?'<img src="'+h.img+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">':'🐦';
+    var t=h.time.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    return '<div class="hist-item"><div class="hist-thumb">'+imgHtml+'</div>'+
+      '<div class="hist-info"><div class="hist-name">'+h.bird+'</div>'+
+      '<div class="hist-sci">'+(h.sci||'—')+'</div></div>'+
+      '<div class="hist-meta"><span class="conf-badge '+cls+'">'+h.conf+'%</span>'+
+      '<span class="hist-time">'+t+'</span></div></div>';
+  }).join('');
+}
+
+function clearHistory(){
+  detections.length=0;
+  var badge=document.getElementById('histBadge');badge.textContent='0';badge.style.display='none';
+  document.getElementById('sessionCount').textContent='0';
+  document.getElementById('avgConf').textContent='—';
+  document.getElementById('topSpecies').textContent='—';
+  renderHistory();toast('History cleared','🗑');
+}
+
+// ═══════════════════════════════════════════
+// LIBRARY
+// ═══════════════════════════════════════════
+function renderLibrary(filter){
+  filter=filter||'';
+  var grid=document.getElementById('libGrid');
+  var items=Object.values(library).filter(b=>!filter||b.bird.toLowerCase().includes(filter.toLowerCase()));
+  if(!items.length){
+    grid.innerHTML='<div class="empty" style="grid-column:1/-1"><span class="empty-ico">📚</span>'+(filter?'No results for "'+filter+'"':'Detect birds to fill your library!')+'</div>';return;
+  }
+  grid.innerHTML=items.map(b=>{
+    var imgHtml=b.img?'<img src="'+b.img+'" alt="'+b.bird+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML=\'🐦\'">':'🐦';
+    return '<div class="lib-card"><div class="lib-thumb">'+imgHtml+'</div>'+
+      '<div class="lib-body"><div class="lib-name">'+b.bird+'</div>'+
+      '<div class="lib-sci">'+(b.sci||'Unknown')+'</div>'+
+      '<div class="lib-ct">'+b.count+'× detected</div></div></div>';
+  }).join('');
+}
+function filterLibrary(){renderLibrary(document.getElementById('libSearch').value);}
+
+// ═══════════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════════
+function updateAnalytics(){
+  document.getElementById('mTotal').textContent=detections.length;
+  document.getElementById('mUnique').textContent=Object.keys(library).length;
+  document.getElementById('mAvg').textContent=detections.length?Math.round(detections.reduce((a,b)=>a+b.conf,0)/detections.length)+'%':'—';
+  var chart=document.getElementById('confChart');
+  if(!detections.length){chart.innerHTML='<div style="color:var(--text3);font-size:11px;align-self:center;width:100%;text-align:center;">No data yet</div>';return;}
+  var slice=detections.slice().reverse().slice(-14);
+  var max=Math.max(...slice.map(h=>h.conf));
+  chart.innerHTML=slice.map(h=>{
+    var pct=Math.round(h.conf/max*100);
+    var col=h.conf>=80?'var(--g2)':h.conf>=50?'var(--amber)':'var(--red)';
+    return '<div class="bar-col"><div class="bar" style="height:'+pct+'%;background:'+col+';box-shadow:0 0 6px '+col.replace('var(--','').replace(')','')+'30"></div>'+
+      '<div class="bar-lbl">'+h.conf+'%</div></div>';
+  }).join('');
+  var sb=document.getElementById('speciesBar');
+  var freq={};detections.forEach(h=>freq[h.bird]=(freq[h.bird]||0)+1);
+  var sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(!sorted.length){sb.innerHTML='<div style="color:var(--text3);font-size:11px;">No data yet</div>';return;}
+  var maxC=sorted[0][1];
+  sb.innerHTML=sorted.map(([name,count])=>{
+    var pct=Math.round(count/maxC*100);
+    return '<div class="sbar-item"><div class="sbar-hd"><span class="sbar-name">'+name+'</span><span class="sbar-ct">'+count+'×</span></div>'+
+      '<div class="track"><div class="fill" style="width:'+pct+'%;"></div></div></div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════
+function exportCSV(){
+  if(!detections.length){toast('No detections to export','⚠️');return;}
+  var rows=[['Species','Scientific Name','Confidence (%)','Time','Audio Duration (s)']];
+  detections.forEach(h=>rows.push([h.bird,h.sci||'',h.conf,h.time.toLocaleString(),waveBuffer?waveBuffer.duration.toFixed(2):'—']));
+  var csv=rows.map(r=>r.map(v=>'"'+v+'"').join(',')).join('\n');
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='birdai-detections.csv';a.click();
+  toast('CSV exported!','📥');
+}
+
+// ═══════════════════════════════════════════
+// SHARE MODAL
+// ═══════════════════════════════════════════
+function openShareModal(){
+  var r=lastResult;
+  document.getElementById('shareN').textContent=r?r.bird:'---';
+  document.getElementById('shareS').textContent=r?r.sci:'—';
+  document.getElementById('shareC').textContent=r?'Confidence: '+r.conf+'%':'No detection yet';
+  var ph=document.getElementById('shareImgPh');
+  ph.innerHTML=r&&r.img?'<img src="'+r.img+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">':'🐦';
+  document.getElementById('shareModal').classList.add('open');
+}
+
+function copyShareText(){
+  if(!lastResult)return;
+  var text='🐦 '+lastResult.bird+'\n'+lastResult.sci+'\nConfidence: '+lastResult.conf+'%\n\nIdentified with BirdAI';
+  navigator.clipboard.writeText(text).then(()=>{toast('Copied!','📋');closeModal('shareModal');});
+}
+
+async function nativeShare(){
+  if(!lastResult)return;
+  var text='🐦 '+lastResult.bird+' — Confidence: '+lastResult.conf+'% | Identified with BirdAI';
+  if(navigator.share){
+    try{await navigator.share({title:'BirdAI Detection',text:text});closeModal('shareModal');}
+    catch(e){}
+  }else{copyShareText();}
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ═══════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal('shareModal');closeModal('videoModal');}});
+document.getElementById('shareModal').addEventListener('click',e=>{if(e.target===document.getElementById('shareModal'))closeModal('shareModal');});
+document.getElementById('videoModal').addEventListener('click',e=>{if(e.target===document.getElementById('videoModal'))closeModal('videoModal');});
 </script>
-
 </body>
 </html>

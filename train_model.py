@@ -4,42 +4,36 @@ import os
 import numpy as np
 import warnings
 from collections import Counter
+
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import accuracy_score
+
+from xgboost import XGBClassifier
+
 import joblib
 from utils import extract_features
 
-# ----------------------------------------
-# Ignore warnings
-# ----------------------------------------
 warnings.filterwarnings("ignore")
 
 DATASET_PATH = "dataset"
-
-# ----------------------------------------
-# Check dataset folder
-# ----------------------------------------
-if not os.path.exists(DATASET_PATH):
-    print("ERROR: Dataset folder not found.")
-    exit()
 
 features = []
 labels = []
 
 print("Loading dataset...\n")
 
-# ----------------------------------------
-# Load dataset
-# ----------------------------------------
+# ---------------- LOAD DATA ----------------
 for species in os.listdir(DATASET_PATH):
+
+    species = species.lower().strip()   # 🔥 CLEAN LABEL
 
     species_path = os.path.join(DATASET_PATH, species)
 
     if not os.path.isdir(species_path):
         continue
 
-    print("Processing species:", species)
+    print("Processing:", species)
 
     for file in os.listdir(species_path):
 
@@ -47,98 +41,59 @@ for species in os.listdir(DATASET_PATH):
 
             file_path = os.path.join(species_path, file)
 
-            try:
-                feature = extract_features(file_path)
+            feature = extract_features(file_path)
 
-                if feature is None:
-                    continue
-
-                if np.isnan(feature).any():
-                    continue
-
+            if feature is not None:
                 features.append(feature)
                 labels.append(species)
 
-            except Exception:
-                print("Skipped corrupted file:", file_path)
-
-# ----------------------------------------
-# Convert to numpy
-# ----------------------------------------
+# Convert
 X = np.array(features)
 y = np.array(labels)
 
-print("\n----------------------------------")
-print("Total samples loaded:", len(X))
-print("Unique species:", len(set(y)))
-print("----------------------------------")
+print("Samples:", len(X))
 
-# ----------------------------------------
-# Remove rare classes (<2 samples)
-# ----------------------------------------
-class_counts = Counter(y)
+# Remove rare classes
+counts = Counter(y)
+valid = [i for i, label in enumerate(y) if counts[label] >= 2]
 
-valid_indices = [i for i, label in enumerate(y) if class_counts[label] >= 2]
+X = X[valid]
+y = y[valid]
 
-X = X[valid_indices]
-y = y[valid_indices]
+# ---------------- ENCODE LABELS ----------------
+encoder = LabelEncoder()
+y_encoded = encoder.fit_transform(y)
 
-print("\nAfter removing rare species:")
-print("Total samples:", len(X))
-print("Unique species:", len(set(y)))
+joblib.dump(encoder, "label_encoder.pkl")
 
-# ----------------------------------------
-# Validate dataset
-# ----------------------------------------
-if len(X) == 0:
-    print("ERROR: No valid audio files found.")
-    exit()
+# ---------------- SCALE ----------------
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
-if len(set(y)) < 2:
-    print("ERROR: Need at least 2 bird species.")
-    exit()
+joblib.dump(scaler, "scaler.pkl")
 
-# ----------------------------------------
-# Train/Test Split
-# ----------------------------------------
+# ---------------- SPLIT ----------------
 X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
+    X, y_encoded, test_size=0.2, stratify=y_encoded, random_state=42
 )
 
-# ----------------------------------------
-# Train Model
-# ----------------------------------------
-print("\nTraining RandomForest model...\n")
-
-model = RandomForestClassifier(
-    n_estimators=300,
-    max_depth=None,
-    random_state=42,
-    n_jobs=-1
+# ---------------- MODEL ----------------
+model = XGBClassifier(
+    n_estimators=400,
+    learning_rate=0.05,
+    max_depth=6,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    eval_metric='mlogloss'
 )
 
 model.fit(X_train, y_train)
 
-# ----------------------------------------
-# Evaluate Model
-# ----------------------------------------
+# ---------------- EVALUATE ----------------
 y_pred = model.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
 
-accuracy = accuracy_score(y_test, y_pred)
-
-print("Model Accuracy:", accuracy)
-
-print("\nClassification Report:\n")
-print(classification_report(y_test, y_pred))
-
-# ----------------------------------------
-# Save Model
-# ----------------------------------------
+# ---------------- SAVE ----------------
 joblib.dump(model, "bird_species_model.pkl")
 
-print("\nModel saved as: bird_species_model.pkl")
-print("\nTraining completed successfully.")
+print("✅ Training Complete")

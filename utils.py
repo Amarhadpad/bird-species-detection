@@ -6,90 +6,44 @@ import os
 
 def extract_features(file_path):
 
-    # --------------------------------------
-    # Check file exists
-    # --------------------------------------
     if not os.path.exists(file_path):
-        print("File not found:", file_path)
         return None
 
     try:
-        # --------------------------------------
-        # Load audio
-        # --------------------------------------
-        audio, sr = librosa.load(file_path, sr=22050)
+        y, sr = librosa.load(file_path, sr=22050, duration=5)
 
-        # Skip empty audio
-        if len(audio) == 0:
-            print("Empty audio:", file_path)
+        if len(y) == 0:
             return None
 
-        # --------------------------------------
-        # Normalize safely
-        # --------------------------------------
-        max_val = np.max(np.abs(audio))
-        if max_val > 0:
-            audio = audio / max_val
+        # Normalize
+        if np.max(np.abs(y)) > 0:
+            y = y / np.max(np.abs(y))
 
-        # --------------------------------------
-        # Remove silence
-        # --------------------------------------
-        audio, _ = librosa.effects.trim(audio)
+        # Noise reduction
+        y = librosa.effects.preemphasis(y)
 
-        if len(audio) < 2048:
-            print("Audio too short:", file_path)
+        # Trim silence
+        y, _ = librosa.effects.trim(y, top_db=20)
+
+        if len(y) < 2048:
             return None
 
-        # --------------------------------------
-        # MFCC Features
-        # --------------------------------------
-        mfcc = librosa.feature.mfcc(
-            y=audio,
-            sr=sr,
-            n_mfcc=40
+        # Features
+        mfcc = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40).T, axis=0)
+        chroma = np.mean(librosa.feature.chroma_stft(y=y, sr=sr).T, axis=0)
+        mel = np.mean(librosa.feature.melspectrogram(y=y, sr=sr).T, axis=0)
+        contrast = np.mean(librosa.feature.spectral_contrast(y=y, sr=sr).T, axis=0)
+        tonnetz = np.mean(
+            librosa.feature.tonnetz(y=librosa.effects.harmonic(y), sr=sr).T,
+            axis=0
         )
 
-        mfcc_mean = np.mean(mfcc.T, axis=0)
+        features = np.hstack([mfcc, chroma, mel, contrast, tonnetz])
 
-        # --------------------------------------
-        # Spectral Centroid
-        # --------------------------------------
-        spectral_centroid = np.mean(
-            librosa.feature.spectral_centroid(y=audio, sr=sr)
-        )
-
-        # --------------------------------------
-        # Spectral Bandwidth
-        # --------------------------------------
-        spectral_bandwidth = np.mean(
-            librosa.feature.spectral_bandwidth(y=audio, sr=sr)
-        )
-
-        # --------------------------------------
-        # Zero Crossing Rate
-        # --------------------------------------
-        zcr = np.mean(
-            librosa.feature.zero_crossing_rate(audio)
-        )
-
-        # --------------------------------------
-        # Combine Features
-        # --------------------------------------
-        features = np.hstack([
-            mfcc_mean,
-            spectral_centroid,
-            spectral_bandwidth,
-            zcr
-        ])
-
-        # Check NaN values
         if np.isnan(features).any():
-            print("NaN detected:", file_path)
             return None
 
         return features
 
-    except Exception as e:
-        print("Error processing:", file_path)
-        print("Reason:", e)
+    except:
         return None

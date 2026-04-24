@@ -4,38 +4,30 @@ import sounddevice as sd
 import numpy as np
 import soundfile as sf
 import joblib
-import os
 from utils import extract_features
 
-SAMPLE_RATE = 44100
-DURATION = 5
-MODEL_PATH = "bird_species_model.pkl"
+model = joblib.load("bird_species_model.pkl")
+scaler = joblib.load("scaler.pkl")
 
-if not os.path.exists(MODEL_PATH):
-    print("Model not found. Train first.")
-    exit()
+print("Recording...")
 
-model = joblib.load(MODEL_PATH)
+sr = 22050
+duration = 5
 
-print("Recording for 5 seconds...")
-
-recording = sd.rec(
-    int(DURATION * SAMPLE_RATE),
-    samplerate=SAMPLE_RATE,
-    channels=1
-)
-
+audio = sd.rec(int(duration * sr), samplerate=sr, channels=1)
 sd.wait()
 
-audio = recording.flatten()
+audio = audio.flatten()
+sf.write("temp.wav", audio, sr)
 
-sf.write("realtime.wav", audio, SAMPLE_RATE)
-
-features = extract_features("realtime.wav")
+features = extract_features("temp.wav")
 
 if features is not None:
-    features = features.reshape(1, -1)
-    prediction = model.predict(features)
-    print("Predicted Species:", prediction[0])
+    features = scaler.transform([features])
+    pred = model.predict(features)[0]
+    prob = np.max(model.predict_proba(features)) * 100
+
+    print("\nPrediction:", pred)
+    print("Confidence:", round(prob, 2), "%")
 else:
-    print("Prediction failed.")
+    print("Failed")
